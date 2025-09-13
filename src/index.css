@@ -1,3 +1,184 @@
+/* ------------------------------------------------------------------
+  src/index.css
+  - Tailwind base + components + utilities
+  - plus custom styles: flame animation, .small-card, .icon-sm, etc.
+------------------------------------------------------------------- */
+
+/* Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------- Base tweaks ---------- */
+:root{
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.28);
+  --card-radius: 0.9rem;
+}
+
+/* small global reset for typography */
+html, body, #root {
+  height: 100%;
+  background-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Flame animation for header title ---------- */
+@keyframes flame-flicker {
+  0% {
+    text-shadow: 0 0 6px rgba(255,180,0,0.12), 0 0 12px rgba(255,110,0,0.06);
+    transform: translateY(0);
+    color: #ff6a00;
+  }
+  20% {
+    text-shadow: 0 0 8px rgba(255,200,0,0.14), 0 0 18px rgba(255,90,0,0.08);
+    transform: translateY(-1px) scale(1.01);
+    color: #ff7b00;
+  }
+  40% {
+    text-shadow: 0 0 10px rgba(255,220,0,0.16), 0 0 24px rgba(255,70,0,0.10);
+    transform: translateY(0);
+    color: #ff8a00;
+  }
+  60% {
+    text-shadow: 0 0 7px rgba(255,190,0,0.13), 0 0 14px rgba(255,95,0,0.07);
+    transform: translateY(-0.5px);
+    color: #ff6a00;
+  }
+  100% {
+    text-shadow: 0 0 6px rgba(255,180,0,0.12), 0 0 12px rgba(255,110,0,0.06);
+    transform: translateY(0);
+    color: #ff6a00;
+  }
+}
+
+.flame {
+  display: inline-block;
+  position: relative;
+  animation: flame-flicker 2.6s infinite ease-in-out;
+  will-change: transform, text-shadow, color;
+  /* slight preserve for layout */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ember glow behind text */
+.flame::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140%;
+  height: 2.4rem;
+  transform: translate(-50%, -50%) rotate(-2deg);
+  filter: blur(16px);
+  opacity: 0.06;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255,150,50,0.9), rgba(255,90,0,0.2), transparent 55%);
+  border-radius: 30%;
+  animation: flame-flicker 2.6s infinite ease-in-out;
+}
+
+/* slower variant if needed */
+.flame-slow { animation-duration: 3.8s; }
+
+/* ---------- Compact card / glass styles ---------- */
+/* uses Tailwind's @apply if your build supports it (recommended) */
+.small-card {
+  @apply bg-white/60 backdrop-blur-sm rounded-lg shadow-sm border border-white/20 p-4 transition-transform;
+  transform-origin: center;
+}
+.small-card:hover {
+  @apply -translate-y-0.5 shadow-md;
+}
+
+/* fallback small-card without @apply (uncomment if build fails)
+.small-card {
+  background-color: rgba(255,255,255,0.6);
+  backdrop-filter: blur(6px);
+  border-radius: 0.6rem;
+  box-shadow: 0 6px 18px rgba(12,20,30,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 1rem;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.small-card:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(12,20,30,0.08); }
+*/
+
+/* slightly larger glass panel for status/category boxes */
+.glass-panel {
+  @apply bg-white/30 backdrop-blur-sm rounded-lg p-4 border border-white/20;
+}
+
+/* ---------- Typography helpers ---------- */
+.h-sm { font-size: 0.9rem; }       /* small heading inside cards */
+.stat-lg { font-size: 1.25rem; }   /* main stat numbers */
+.note-sm { font-size: 0.80rem; color: #6b7280; } /* subtle meta text */
+
+/* ---------- Icon sizing helpers ---------- */
+/* small circular icon container */
+.icon-sm {
+  @apply w-11 h-11 rounded-full flex items-center justify-center shadow-md;
+}
+
+/* example gradients for icon container usage (use with class names) */
+.icon-blue { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.icon-green { background: linear-gradient(135deg,#34d399,#10b981); }
+.icon-yellow { background: linear-gradient(135deg,#facc15,#f59e0b); }
+
+/* inner svg icon color */
+.icon-sm svg { color: white; }
+
+/* ---------- Layout helpers ---------- */
+/* slightly tighter container to use horizontal space */
+.tight-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+}
+
+/* reduce grid gaps for more density */
+.grid-tight { gap: 1rem; }
+
+/* ---------- Small global UI tweaks ---------- */
+/* subtle card header color */
+.card-title { color: #374151; font-weight: 600; font-size: 0.95rem; }
+
+/* table row compactness */
+.table-compact td, .table-compact th { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+/* tooltip-like small badges */
+.badge-small {
+  @apply text-xs px-2 py-0.5 rounded-full bg-white/40 border border-white/20;
+}
+
+/* responsive tweaks */
+@media (min-width: 1024px) {
+  .lg-pl-custom { padding-left: 9.5rem; } /* matches your lg:pl-[9.5rem] choice */
+}
+
+/* ---------- Accessibility & print ---------- */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+}
+
+/* ---------- small animation utility ---------- */
+.fade-in {
+  animation: fadeIn 360ms ease both;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- end of custom CSS ---------- */
+
+/* Tip:
+   - Use .small-card on the small tiles/cards
+   - Use .icon-sm plus .icon-blue / .icon-green / .icon-yellow for the circle icons
+   - Use .glow or .flame on the header text for the burning effect
+   - Use .tight-container on the inner wrapper to keep content nicely aligned
+*/

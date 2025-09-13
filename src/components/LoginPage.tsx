@@ -1,3 +1,4 @@
+import ModelBackground from './ModelBackground';
 import React, { useState } from 'react';
 import { Package, Snowflake } from 'lucide-react';
 
@@ -44,7 +45,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <div className="absolute inset-0 pointer-events-none">
+      {/* 3D GLB background (absolute, z-0) */}
+      <ModelBackground />
+
+      {/* optional ember overlay + subtle glow (above model, below snowflakes & form) */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background:
+            'radial-gradient(circle at 10% 10%, rgba(255,166,77,0.02), transparent 8%), radial-gradient(circle at 90% 90%, rgba(255,100,50,0.02), transparent 8%)'
+        }}
+        aria-hidden="true"
+      />
+
+      {/* snowflakes (above background, below form) */}
+      <div className="absolute inset-0 pointer-events-none z-10">
         {snowflakes.map((flake) => (
           <div
             key={flake.id}
@@ -63,7 +78,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         ))}
       </div>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+      {/* actual form content sits above everything */}
+      <div className="relative z-20 min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="backdrop-blur-lg bg-white/30 rounded-2xl shadow-2xl border border-white/20 p-8 transform transition-all duration-300 hover:scale-105">
             <div className="text-center mb-8">
@@ -124,21 +140,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
           <div className="mt-4 text-center">
             <div className="inline-block bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-              {/* you can optionally show demo creds here */}
               <div className="text-xs text-gray-600">Demo: admin / password (or use your own)</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200/20 rounded-full blur-xl"></div>
-      <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-300/20 rounded-full blur-2xl"></div>
-      <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/30 rounded-full blur-lg"></div>
+      {/* soft decorative blobs */}
+      <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200/20 rounded-full blur-xl z-0" />
+      <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-300/20 rounded-full blur-2xl z-0" />
+      <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/30 rounded-full blur-lg z-0" />
     </div>
   );
 };
 
 export default LoginPage;
-
-
-

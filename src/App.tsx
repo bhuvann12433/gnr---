@@ -9,7 +9,6 @@ import { Equipment, EquipmentStats } from './types/Equipment';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
-
 async function fetchEquipment(params: { category?: string; search?: string; status?: string } = {}): Promise<Equipment[]> {
   const queryParams = new URLSearchParams();
   if (params.category && params.category !== 'all') queryParams.append('category', params.category);
@@ -36,7 +35,6 @@ async function fetchStats(): Promise<EquipmentStats> {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    // quick persistence: if there's a saved username, treat as logged in
     return Boolean(localStorage.getItem('gnr_user'));
   });
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -49,7 +47,6 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
-  // --- auth: send credentials to backend and return a result object for LoginPage
   const handleLogin = async (username: string, password: string): Promise<{ ok: boolean; message?: string }> => {
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
@@ -63,7 +60,6 @@ function App() {
         return { ok: false, message: body.message || 'Invalid credentials' };
       }
 
-      // success -> keep simple session by storing username
       localStorage.setItem('gnr_user', username);
       setIsLoggedIn(true);
       return { ok: true };
@@ -78,7 +74,6 @@ function App() {
     setIsLoggedIn(false);
   };
 
-  // Load data when filters change (only when logged in)
   useEffect(() => {
     if (!isLoggedIn) return;
     loadData();
@@ -132,7 +127,7 @@ function App() {
   const handleSaveEquipment = async (equipmentData: Partial<Equipment>) => {
     try {
       if (editingItem) {
-        const res = await fetch(`${API_BASE}/equipment/${editingItem._id}`, {
+        const res = await fetch(`${API_BASE}/equipment/${editingItem._1d}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(equipmentData)
@@ -157,7 +152,7 @@ function App() {
       await loadData();
     } catch (error) {
       console.error('Error saving equipment:', error);
-      alert('Save failed. Check console.');
+      alert('Save failed. Check console.' );
     }
   };
 
@@ -175,18 +170,17 @@ function App() {
       await loadData();
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Status update failed. Check console.');
+      alert('Status update failed. Check console.' );
     }
   };
 
-  // Show login page if not authenticated
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
   if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="mx-auto h-12 w-12 text-blue-500 animate-spin" />
           <p className="mt-4 text-gray-600">Loading inventory...</p>
@@ -196,10 +190,10 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="px-4 sm:px-6 lg:px-8">
+      <header className="bg-white/60 backdrop-blur-sm shadow-sm border-b border-gray-200">
+        <div className="px-4 sm:px-6 lg:px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
@@ -211,7 +205,17 @@ function App() {
               <div className="flex items-center ml-2 lg:ml-0">
                 <Package className="h-8 w-8 text-blue-600" />
                 <div className="ml-3">
-                  <h1 className="text-xl font-bold text-gray-900">Gnr Surgicals</h1>
+                 <h1 className="text-lg font-extrabold tracking-wide flame" style={{ letterSpacing: '1px' }}>GNR-SURGICALS
+  <span style={{
+    display: 'inline-block',
+    width: 6,
+    height: 6,
+    marginLeft: 8,
+    borderRadius: 999,
+    background: 'radial-gradient( #ff6a00)'
+  }} />
+</h1>
+
                   <p className="text-sm text-gray-500">Inventory Management</p>
                 </div>
               </div>
@@ -261,8 +265,8 @@ function App() {
         />
 
         {/* Main Content */}
-        <main className="flex-1 lg:pl-64">
-          <div className="p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 lg:pl-38">
+          <div className="p-4 sm:p-6 lg:p-6 max-w-[1400px]">
             {/* Mobile Search */}
             <div className="sm:hidden mb-6">
               <div className="relative">
@@ -308,6 +312,5 @@ function App() {
     </div>
   );
 }
-
 
 export default App;
