@@ -8,6 +8,40 @@ import CategorySidebar from './components/CategorySidebar';
 import { Equipment, EquipmentStats } from './types/Equipment';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+console.log('API_BASE →', API_BASE);
+
+// Utility: fetch with token
+async function apiFetch(url: string, options: RequestInit = {}) {
+  // if user passed a relative path like "/equipment", prepend API_BASE
+  const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+
+  const token = localStorage.getItem('gnr_token');
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // ensure content-type when body is present and header not already set
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(fullUrl, { ...options, headers });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    // try parse json if it's json
+    let parsed: any;
+    try {
+      parsed = JSON.parse(txt || '{}');
+    } catch {
+      parsed = txt;
+    }
+    const message = parsed && parsed.message ? parsed.message : txt || res.statusText;
+    throw new Error(`${res.status} ${message}`);
+  }
+  // if no content
+  if (res.status === 204) return null;
+  return res.json();
+}
 
 async function fetchEquipment(params: { category?: string; search?: string; status?: string } = {}): Promise<Equipment[]> {
   const queryParams = new URLSearchParams();
@@ -15,28 +49,16 @@ async function fetchEquipment(params: { category?: string; search?: string; stat
   if (params.search) queryParams.append('search', params.search);
   if (params.status && params.status !== 'all') queryParams.append('status', params.status);
 
-  const url = `${API_BASE}/equipment${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Failed to fetch equipment: ${res.status} ${txt}`);
-  }
-  return res.json();
+  const path = `/equipment${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  return apiFetch(path);
 }
 
 async function fetchStats(): Promise<EquipmentStats> {
-  const res = await fetch(`${API_BASE}/stats/summary`);
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Failed to fetch stats: ${res.status} ${txt}`);
-  }
-  return res.json();
+  return apiFetch('/stats/summary');
 }
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return Boolean(localStorage.getItem('gnr_user'));
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => Boolean(localStorage.getItem('gnr_token')));
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [stats, setStats] = useState<EquipmentStats | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -49,6 +71,7 @@ function App() {
 
   const handleLogin = async (username: string, password: string): Promise<{ ok: boolean; message?: string }> => {
     try {
+      // use relative path so apiFetch will prepend base
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,20 +80,25 @@ function App() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        return { ok: false, message: body.message || 'Invalid credentials' };
+        return { ok: false, message: body.message || `Login failed: ${res.status}` };
       }
 
-      localStorage.setItem('gnr_user', username);
-      setIsLoggedIn(true);
-      return { ok: true };
-    } catch (err) {
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('gnr_token', data.token);
+        setIsLoggedIn(true);
+        return { ok: true };
+      } else {
+        return { ok: false, message: 'No token received from server' };
+      }
+    } catch (err: any) {
       console.error('Login request failed', err);
-      return { ok: false, message: 'Server unreachable' };
+      return { ok: false, message: err.message || 'Server unreachable' };
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('gnr_user');
+    localStorage.removeItem('gnr_token');
     setIsLoggedIn(false);
   };
 
@@ -111,11 +139,7 @@ function App() {
   const handleDeleteEquipment = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this equipment?')) return;
     try {
-      const res = await fetch(`${API_BASE}/equipment/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Failed to delete: ${res.status} ${txt}`);
-      }
+      await apiFetch(`/equipment/${id}`, { method: 'DELETE' });
       setEquipment(prev => prev.filter(item => item._id !== id));
       await loadData();
     } catch (error) {
@@ -127,50 +151,35 @@ function App() {
   const handleSaveEquipment = async (equipmentData: Partial<Equipment>) => {
     try {
       if (editingItem) {
-        const res = await fetch(`${API_BASE}/equipment/${editingItem._1d}`, {
+        await apiFetch(`/equipment/${editingItem._id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(equipmentData)
         });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`Failed to update: ${res.status} ${txt}`);
-        }
       } else {
-        const res = await fetch(`${API_BASE}/equipment`, {
+        await apiFetch('/equipment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(equipmentData)
         });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`Failed to create: ${res.status} ${txt}`);
-        }
       }
       setShowForm(false);
       setEditingItem(null);
       await loadData();
     } catch (error) {
       console.error('Error saving equipment:', error);
-      alert('Save failed. Check console.' );
+      alert('Save failed. Check console.');
     }
   };
 
   const handleUpdateStatus = async (id: string, status: 'available' | 'in_use' | 'maintenance', change: number) => {
     try {
-      const res = await fetch(`${API_BASE}/equipment/${id}/status`, {
+      await apiFetch(`/equipment/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, change })
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Failed to update status: ${res.status} ${txt}`);
-      }
       await loadData();
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Status update failed. Check console.' );
+      alert('Status update failed. Check console.');
     }
   };
 
@@ -205,17 +214,17 @@ function App() {
               <div className="flex items-center ml-2 lg:ml-0">
                 <Package className="h-8 w-8 text-blue-600" />
                 <div className="ml-3">
-                 <h1 className="text-lg font-extrabold tracking-wide flame" style={{ letterSpacing: '1px' }}>GNR-SURGICALS
-  <span style={{
-    display: 'inline-block',
-    width: 6,
-    height: 6,
-    marginLeft: 8,
-    borderRadius: 999,
-    background: 'radial-gradient( #ff6a00)'
-  }} />
-</h1>
-
+                 <h1 className="text-lg font-extrabold tracking-wide flame" style={{ letterSpacing: '1px' }}>
+                   GNR-SURGICALS
+                   <span style={{
+                     display: 'inline-block',
+                     width: 6,
+                     height: 6,
+                     marginLeft: 8,
+                     borderRadius: 999,
+                     background: 'radial-gradient(#ff6a00)'
+                   }} />
+                 </h1>
                   <p className="text-sm text-gray-500">Inventory Management</p>
                 </div>
               </div>

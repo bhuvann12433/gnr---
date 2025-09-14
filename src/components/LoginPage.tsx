@@ -12,6 +12,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const showDebug = (text: string) => {
+    const el =
+      document.getElementById('fetchDebug') ||
+      ((): HTMLElement => {
+        const d = document.createElement('div');
+        d.id = 'fetchDebug';
+        d.style.position = 'fixed';
+        d.style.bottom = '12px';
+        d.style.left = '12px';
+        d.style.right = '12px';
+        d.style.zIndex = '99999';
+        d.style.background = 'linear-gradient(90deg, rgba(220,38,38,0.95), rgba(185,28,28,0.95))';
+        d.style.color = 'white';
+        d.style.padding = '12px';
+        d.style.borderRadius = '10px';
+        d.style.fontSize = '13px';
+        d.style.boxShadow = '0 10px 30px rgba(0,0,0,0.22)';
+        d.style.wordBreak = 'break-word';
+        d.style.maxHeight = '30vh';
+        d.style.overflow = 'auto';
+        document.body.appendChild(d);
+        return d;
+      })();
+    el.textContent = text;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -25,9 +51,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         return;
       }
       // success — App will update isLoggedIn
-    } catch (err) {
+    } catch (err: any) {
+      // show friendly UI error
       setError('Unable to connect. Try again.');
       console.error('Login error', err);
+
+      // show raw debug message on screen (useful for phone)
+      try {
+        const msg =
+          (err && err.message) ||
+          (typeof err === 'string' ? err : JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        showDebug(`Login fetch error: ${msg}`);
+        // optional beacon to server-side logging endpoint (if you add one)
+        if (navigator.sendBeacon) {
+          try {
+            navigator.sendBeacon('/api/log-client', JSON.stringify({ err: String(msg), at: new Date().toISOString() }));
+          } catch (_) {}
+        }
+      } catch (e2) {
+        // ignore
+      }
     } finally {
       setIsLoading(false);
     }
