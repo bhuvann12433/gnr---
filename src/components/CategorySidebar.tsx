@@ -21,16 +21,17 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
   isOpen,
   onClose
 }) => {
+  // Format numbers and currency for India (₹, lakh/crore grouping)
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
+    return new Intl.NumberFormat('en-IN').format(num);
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   };
 
@@ -76,7 +77,7 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
             >
               <span>All Categories</span>
               <span className="text-xs text-gray-500">
-                {categoryList.reduce((sum, [, totals]) => sum + totals.count, 0)}
+                {categoryList.reduce((sum, [, totals]) => sum + (totals.count || 0), 0)}
               </span>
             </button>
             
@@ -95,14 +96,14 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
               >
                 <div className="flex items-center justify-between w-full">
                   <span>{category}</span>
-                  <span className="text-xs text-gray-500">{totals.count}</span>
+                  <span className="text-xs text-gray-500">{totals.count ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between w-full mt-1">
                   <span className="text-xs text-gray-500">
-                    {formatNumber(totals.units)} units
+                    {formatNumber(totals.units ?? 0)} units
                   </span>
                   <span className="text-xs font-medium text-gray-600">
-                    {formatCurrency(totals.cost)}
+                    {typeof (totals as any).cost === 'number' ? formatCurrency((totals as any).cost) : ''}
                   </span>
                 </div>
               </button>

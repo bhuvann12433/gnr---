@@ -73,7 +73,7 @@ async function fetchStats(): Promise<EquipmentStats> {
  * - or flat fields: item.available, item.in_use, item.maintenance
  *
  * We compute the new counts locally and validate the sum equals total quantity
- * before sending patch to the server. This prevents the 400 "counts must equal total" error.
+ * before sending patch to the server.
  */
 function readStatusCounts(item: any) {
   // prefer a counts object if present
@@ -212,17 +212,23 @@ function App() {
   };
 
   /**
-   * Updated status handler with local validation to prevent mismatch errors.
-   * - id: equipment id
-   * - status: 'available' | 'in_use' | 'maintenance'
-   * - change: positive or negative integer to apply to that status bucket
+   * Improved status handler:
+   * - If local counts sum !== totalQuantity, offer to auto-fill remaining units
+   *   into the target bucket (so the counts sum equals quantity) and then send
+   *   a full `counts` payload to the backend.
+   *
+   * This prevents the 400 while keeping the user's intent explicit.
    */
-  const handleUpdateStatus = async (id: string, status: 'available' | 'in_use' | 'maintenance', change: number) => {
+  const handleUpdateStatus = async (
+    id: string,
+    status: 'available' | 'in_use' | 'maintenance',
+    change: number
+  ) => {
     try {
-      // find the item locally so we can validate counts before calling the server
+      // find the local item
       const item = equipment.find(e => String((e as any)._id) === String(id));
       if (!item) {
-        // If we don't have it locally, proceed with a simple request (best-effort)
+        // no local copy — fallback to basic patch (previous behavior)
         await apiFetch(`/equipment/${id}/status`, {
           method: 'PATCH',
           body: JSON.stringify({ status, change })
@@ -231,42 +237,74 @@ function App() {
         return;
       }
 
-      // read current counts robustly
+      // read counts robustly (supports item.counts or flat fields)
       const currentCounts = readStatusCounts(item as any);
       const totalQuantity = Number((item as any).quantity ?? (item as any).totalQuantity ?? (item as any).total ?? 0);
 
-      // apply change locally
-      const nextCounts = applyChangeToCounts(currentCounts, status, change);
+      // apply requested change
+      const tentativeCounts = applyChangeToCounts(currentCounts, status, change);
 
-      // validate no negative counts
-      if (Object.values(nextCounts).some(v => v < 0)) {
+      // negative counts check
+      if (Object.values(tentativeCounts).some(v => v < 0)) {
         alert('Invalid operation: resulting counts would be negative.');
         return;
       }
 
-      const nextSum = sumCounts(nextCounts);
+      const tentativeSum = sumCounts(tentativeCounts);
 
-      // If totalQuantity available, validate sums match before sending to backend
-      if (totalQuantity > 0 && nextSum !== totalQuantity) {
-        alert(
-          `Cannot update status: resulting status counts (${nextSum}) must equal total quantity (${totalQuantity}). ` +
-          `Please adjust counts or quantity first.`
-        );
+      // if sum already equals total -> we can send simple patch (keep legacy contract)
+      if (totalQuantity > 0 && tentativeSum === totalQuantity) {
+        await apiFetch(`/equipment/${id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status, change })
+        });
+        await loadData();
         return;
       }
 
-      // All good – call the API. Keep the old API contract (status + change) so backend logic still works.
-      // If your backend expects a full counts object you can change the body to { counts: nextCounts } instead.
+      // If we have a totalQuantity and the sums don't match:
+      if (totalQuantity > 0 && tentativeSum !== totalQuantity) {
+        const missing = totalQuantity - tentativeSum;
+
+        // If missing is negative, tentativeSum > total -> block
+        if (missing < 0) {
+          alert(`Invalid operation: resulting status counts (${tentativeSum}) would exceed total quantity (${totalQuantity}).`);
+          return;
+        }
+
+        // Ask user if they'd like to auto-fill the missing units into the target bucket
+        const humanStatus = status === 'in_use' ? 'in use' : status;
+        const confirmMsg =
+          `Cannot update status: resulting status counts (${tentativeSum}) must equal total quantity (${totalQuantity}).\n\n` +
+          `Auto-fill the remaining ${missing} unit${missing === 1 ? '' : 's'} into "${humanStatus}" and proceed?`;
+
+        if (!window.confirm(confirmMsg)) {
+          // user cancelled
+          return;
+        }
+
+        // Build the full counts object to send (fills the missing units into the selected bucket)
+        const fullCounts = { ...tentativeCounts };
+        fullCounts[status] = (fullCounts[status] || 0) + missing; // add the missing units into the target bucket
+
+        // Finally call the backend with a full counts object (server should accept this)
+        await apiFetch(`/equipment/${id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ counts: fullCounts })
+        });
+
+        await loadData();
+        return;
+      }
+
+      // If totalQuantity is 0/unknown, just proceed with the old contract
       await apiFetch(`/equipment/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status, change })
       });
-
-      // reload fresh data
       await loadData();
     } catch (error: any) {
       console.error('Error updating status:', error);
-      // show friendly message including backend error text if available
       alert(`Status update failed. ${error?.message ? `Server: ${error.message}` : ''}`);
     }
   };

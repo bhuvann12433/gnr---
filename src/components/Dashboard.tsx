@@ -6,33 +6,46 @@ interface DashboardProps {
   stats: EquipmentStats;
 }
 
-const USD_TO_INR = 85; // update as needed
+/**
+ * Format a value as Indian Rupees (₹) using en-IN grouping.
+ * - Accepts numbers or strings (will extract numeric part if string contains symbols).
+ * - Always outputs a properly formatted ₹ value.
+ */
+const formatCurrencyINR = (value: number | string | undefined | null) => {
+  let num = 0;
+  if (value == null) num = 0;
+  else if (typeof value === 'number') num = value;
+  else {
+    // strip anything that isn't digit, dot, or minus sign, then parse
+    const cleaned = String(value).replace(/[^\d.-]/g, '');
+    num = Number(cleaned || 0);
+  }
+
+  // If the incoming number looks like it's in USD (very small compared to INR), DO NOT auto-convert.
+  // We assume values are already in INR. If you actually need USD->INR conversion, reintroduce a multiplier.
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
+};
+
+const formatNumber = (n: number | undefined | null) => new Intl.NumberFormat('en-IN').format(n || 0);
+
+const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="bg-white/40 backdrop-blur-sm rounded-2xl shadow-md border border-white/30 p-6 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+    {children}
+  </div>
+);
+
+const IconCircle: React.FC<{ children: React.ReactNode; from?: string; to?: string }> = ({ children, from = 'from-blue-500', to = 'to-blue-600' }) => (
+  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${from} ${to} flex items-center justify-center shadow-md`}>
+    <div className="text-white">{children}</div>
+  </div>
+);
 
 const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
-  const formatINR = (usdAmount: number) => {
-    const inr = Number(usdAmount || 0) * USD_TO_INR;
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(inr);
-  };
-
-  const formatNumber = (n: number) => new Intl.NumberFormat('en-IN').format(n || 0);
-
-  const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="bg-white/40 backdrop-blur-sm rounded-2xl shadow-md border border-white/30 p-6 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
-      {children}
-    </div>
-  );
-
-  const IconCircle: React.FC<{ children: React.ReactNode; from?: string; to?: string }> = ({ children, from = 'from-blue-500', to = 'to-blue-600' }) => (
-    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${from} ${to} flex items-center justify-center shadow-md`}>
-      <div className="text-white">{children}</div>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -68,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
             </div>
             <div className="ml-5 w-0 flex-1">
               <dt className="text-sm font-medium text-gray-700 truncate">Total Value</dt>
-              <dd className="text-2xl font-semibold text-gray-900">{formatINR(stats.totalCost)}</dd>
+              <dd className="text-2xl font-semibold text-gray-900">{formatCurrencyINR((stats.totalCost as any) ?? 0)}</dd>
             </div>
           </div>
         </Card>
@@ -121,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Category Overview</h3>
           <div className="space-y-3">
             {Object.entries(stats.categoryTotals)
-              .sort((a, b) => b[1].cost - a[1].cost)
+              .sort((a, b) => (b[1].cost || 0) - (a[1].cost || 0))
               .slice(0, 5)
               .map(([category, totals]) => (
                 <div key={category} className="flex items-center justify-between">
@@ -129,7 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
                     <span className="text-sm font-medium text-gray-700">{category}</span>
                     <span className="text-xs text-gray-500 ml-1">({totals.count} types, {totals.units} units)</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">{formatINR(totals.cost)}</span>
+                  <span className="text-sm font-semibold text-gray-900">{formatCurrencyINR(totals.cost ?? 0)}</span>
                 </div>
               ))}
           </div>

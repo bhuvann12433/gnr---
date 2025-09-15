@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Edit2, Trash2, CheckCircle, AlertTriangle, Wrench, Plus, Minus } from 'lucide-react';
+import React from 'react';
+import { Edit2, Trash2, CheckCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { Equipment } from '../types/Equipment';
 
 interface EquipmentTableProps {
@@ -14,29 +14,19 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
   equipment,
   onEdit,
   onDelete,
-  onUpdateStatus,
   loading
 }) => {
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-
+  // ✅ Format as INR
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR',
+      minimumFractionDigits: 2
     }).format(amount);
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
-  };
-
-  const handleStatusChange = async (id: string, status: 'available' | 'in_use' | 'maintenance', change: number) => {
-    setUpdatingStatus(`${id}-${status}`);
-    try {
-      await onUpdateStatus(id, status, change);
-    } finally {
-      setUpdatingStatus(null);
-    }
+    return new Intl.NumberFormat('en-IN').format(num);
   };
 
   const getStatusBadge = (statusCounts: Equipment['statusCounts']) => {
@@ -54,36 +44,19 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
     }
   };
 
-  const StatusCounter: React.FC<{
+  const StatusDisplay: React.FC<{
     item: Equipment;
     status: 'available' | 'in_use' | 'maintenance';
     icon: React.ComponentType<any>;
-    color: string;
-  }> = ({ item, status, icon: Icon, color }) => {
+    colorClass: string;
+  }> = ({ item, status, icon: Icon, colorClass }) => {
     const count = item.statusCounts[status];
-    const isUpdating = updatingStatus === `${item._id}-${status}`;
 
     return (
-      <div className="flex items-center space-x-1">
-        <Icon className={`h-4 w-4 ${color}`} />
-        <span className="text-sm font-medium">{count}</span>
-        <div className="flex space-x-1">
-          <button
-            onClick={() => handleStatusChange(item._id, status, 1)}
-            disabled={isUpdating}
-            className="p-1 rounded text-green-600 hover:bg-green-50 disabled:opacity-50"
-            title={`Add one to ${status}`}
-          >
-            <Plus className="h-3 w-3" />
-          </button>
-          <button
-            onClick={() => handleStatusChange(item._id, status, -1)}
-            disabled={isUpdating || count === 0}
-            className="p-1 rounded text-red-600 hover:bg-red-50 disabled:opacity-50"
-            title={`Remove one from ${status}`}
-          >
-            <Minus className="h-3 w-3" />
-          </button>
+      <div className="flex items-center space-x-2">
+        <div className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium border ${colorClass === 'green' ? 'border-green-100 bg-green-50' : colorClass === 'orange' ? 'border-orange-100 bg-orange-50' : 'border-red-100 bg-red-50'}`}>
+          <Icon className={`h-4 w-4 mr-2 ${colorClass === 'green' ? 'text-green-600' : colorClass === 'orange' ? 'text-orange-600' : 'text-red-600'}`} />
+          <span className="text-sm font-medium text-gray-800">{count}</span>
         </div>
       </div>
     );
@@ -163,24 +136,24 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
                     <div className="flex items-center justify-between">
                       {getStatusBadge(item.statusCounts)}
                     </div>
-                    <div className="space-y-1">
-                      <StatusCounter
+                    <div className="space-y-2 mt-2">
+                      <StatusDisplay
                         item={item}
                         status="available"
                         icon={CheckCircle}
-                        color="text-green-500"
+                        colorClass="green"
                       />
-                      <StatusCounter
+                      <StatusDisplay
                         item={item}
                         status="in_use"
                         icon={AlertTriangle}
-                        color="text-orange-500"
+                        colorClass="orange"
                       />
-                      <StatusCounter
+                      <StatusDisplay
                         item={item}
                         status="maintenance"
                         icon={Wrench}
-                        color="text-red-500"
+                        colorClass="red"
                       />
                     </div>
                   </div>
