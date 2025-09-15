@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Search, Filter } from 'lucide-react';
 import LoginPage from './components/LoginPage';
@@ -7,12 +8,23 @@ import EquipmentForm from './components/EquipmentForm';
 import CategorySidebar from './components/CategorySidebar';
 import { Equipment, EquipmentStats } from './types/Equipment';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+/**
+ * API_BASE logic:
+ * 1. If VITE_API_BASE provided (production/proxy), use it.
+ * 2. Else if the page is opened on a LAN IP (not 'localhost'), point API to that host on port 5000.
+ * 3. Otherwise use localhost:5000 (dev).
+ */
+const envBase = import.meta.env.VITE_API_BASE;
+const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const isLocalhostish = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+const API_BASE =
+  envBase ||
+  (isLocalhostish ? 'http://localhost:5000/api' : `http://${hostname}:5000/api`);
+
 console.log('API_BASE →', API_BASE);
 
 // Utility: fetch with token
 async function apiFetch(url: string, options: RequestInit = {}) {
-  // if user passed a relative path like "/equipment", prepend API_BASE
   const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
 
   const token = localStorage.getItem('gnr_token');
@@ -20,15 +32,13 @@ async function apiFetch(url: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string>),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  // ensure content-type when body is present and header not already set
   if (options.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(fullUrl, { ...options, headers });
+  const res = await fetch(fullUrl, { ...options, headers, credentials: 'include' as RequestCredentials });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    // try parse json if it's json
     let parsed: any;
     try {
       parsed = JSON.parse(txt || '{}');
@@ -38,7 +48,6 @@ async function apiFetch(url: string, options: RequestInit = {}) {
     const message = parsed && parsed.message ? parsed.message : txt || res.statusText;
     throw new Error(`${res.status} ${message}`);
   }
-  // if no content
   if (res.status === 204) return null;
   return res.json();
 }
@@ -57,6 +66,45 @@ async function fetchStats(): Promise<EquipmentStats> {
   return apiFetch('/stats/summary');
 }
 
+/**
+ * Helpers to read and update status counts in a robust way.
+ * Some backend shapes:
+ * - item.counts = { available: number, in_use: number, maintenance: number }
+ * - or flat fields: item.available, item.in_use, item.maintenance
+ *
+ * We compute the new counts locally and validate the sum equals total quantity
+ * before sending patch to the server. This prevents the 400 "counts must equal total" error.
+ */
+function readStatusCounts(item: any) {
+  // prefer a counts object if present
+  if (item && typeof item.counts === 'object' && item.counts !== null) {
+    const available = Number(item.counts.available || 0);
+    const in_use = Number(item.counts.in_use || item.counts.inUse || 0);
+    const maintenance = Number(item.counts.maintenance || 0);
+    return { available, in_use, maintenance };
+  }
+
+  // fallback to flat fields
+  const available = Number(item.available || 0);
+  const in_use = Number(item.in_use || item.inUse || 0);
+  const maintenance = Number(item.maintenance || 0);
+  return { available, in_use, maintenance };
+}
+
+function applyChangeToCounts(counts: { available: number; in_use: number; maintenance: number }, status: string, change: number) {
+  const next = { ...counts };
+  if (!['available', 'in_use', 'maintenance'].includes(status)) {
+    // if unknown status, don't mutate — caller should handle
+    return next;
+  }
+  next[status as keyof typeof next] = (next[status as keyof typeof next] || 0) + change;
+  return next;
+}
+
+function sumCounts(counts: { [k: string]: number }) {
+  return Object.values(counts).reduce((s, v) => s + Number(v || 0), 0);
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => Boolean(localStorage.getItem('gnr_token')));
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -69,23 +117,16 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
+  // Login now uses apiFetch so API_BASE logic is consistent
   const handleLogin = async (username: string, password: string): Promise<{ ok: boolean; message?: string }> => {
     try {
-      // use relative path so apiFetch will prepend base
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await apiFetch('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        return { ok: false, message: body.message || `Login failed: ${res.status}` };
-      }
-
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('gnr_token', data.token);
+      if (res && res.token) {
+        localStorage.setItem('gnr_token', res.token);
         setIsLoggedIn(true);
         return { ok: true };
       } else {
@@ -170,16 +211,63 @@ function App() {
     }
   };
 
+  /**
+   * Updated status handler with local validation to prevent mismatch errors.
+   * - id: equipment id
+   * - status: 'available' | 'in_use' | 'maintenance'
+   * - change: positive or negative integer to apply to that status bucket
+   */
   const handleUpdateStatus = async (id: string, status: 'available' | 'in_use' | 'maintenance', change: number) => {
     try {
+      // find the item locally so we can validate counts before calling the server
+      const item = equipment.find(e => String((e as any)._id) === String(id));
+      if (!item) {
+        // If we don't have it locally, proceed with a simple request (best-effort)
+        await apiFetch(`/equipment/${id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status, change })
+        });
+        await loadData();
+        return;
+      }
+
+      // read current counts robustly
+      const currentCounts = readStatusCounts(item as any);
+      const totalQuantity = Number((item as any).quantity ?? (item as any).totalQuantity ?? (item as any).total ?? 0);
+
+      // apply change locally
+      const nextCounts = applyChangeToCounts(currentCounts, status, change);
+
+      // validate no negative counts
+      if (Object.values(nextCounts).some(v => v < 0)) {
+        alert('Invalid operation: resulting counts would be negative.');
+        return;
+      }
+
+      const nextSum = sumCounts(nextCounts);
+
+      // If totalQuantity available, validate sums match before sending to backend
+      if (totalQuantity > 0 && nextSum !== totalQuantity) {
+        alert(
+          `Cannot update status: resulting status counts (${nextSum}) must equal total quantity (${totalQuantity}). ` +
+          `Please adjust counts or quantity first.`
+        );
+        return;
+      }
+
+      // All good – call the API. Keep the old API contract (status + change) so backend logic still works.
+      // If your backend expects a full counts object you can change the body to { counts: nextCounts } instead.
       await apiFetch(`/equipment/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status, change })
       });
+
+      // reload fresh data
       await loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating status:', error);
-      alert('Status update failed. Check console.');
+      // show friendly message including backend error text if available
+      alert(`Status update failed. ${error?.message ? `Server: ${error.message}` : ''}`);
     }
   };
 

@@ -12,47 +12,67 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const showDebug = (text: string) => {
-    const el =
-      document.getElementById('fetchDebug') ||
-      ((): HTMLElement => {
-        const d = document.createElement('div');
-        d.id = 'fetchDebug';
-        d.style.position = 'fixed';
-        d.style.bottom = '12px';
-        d.style.left = '12px';
-        d.style.right = '12px';
-        d.style.zIndex = '99999';
-        d.style.background = 'linear-gradient(90deg, rgba(220,38,38,0.95), rgba(185,28,28,0.95))';
-        d.style.color = 'white';
-        d.style.padding = '12px';
-        d.style.borderRadius = '10px';
-        d.style.fontSize = '13px';
-        d.style.boxShadow = '0 10px 30px rgba(0,0,0,0.22)';
-        d.style.wordBreak = 'break-word';
-        d.style.maxHeight = '30vh';
-        d.style.overflow = 'auto';
-        document.body.appendChild(d);
-        return d;
-      })();
-    el.textContent = text;
+  // Ensure debug element exists; returns the element
+  const ensureDebugEl = (): HTMLElement => {
+    let el = document.getElementById('fetchDebug') as HTMLElement | null;
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fetchDebug';
+      el.style.position = 'fixed';
+      el.style.bottom = '12px';
+      el.style.left = '12px';
+      el.style.right = '12px';
+      el.style.zIndex = '99999';
+      el.style.background = 'linear-gradient(90deg, rgba(220,38,38,0.95), rgba(185,28,28,0.95))';
+      el.style.color = 'white';
+      el.style.padding = '12px';
+      el.style.borderRadius = '10px';
+      el.style.fontSize = '13px';
+      el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.22)';
+      el.style.wordBreak = 'break-word';
+      el.style.maxHeight = '30vh';
+      el.style.overflow = 'auto';
+      el.style.display = 'none'; // hidden by default
+      document.body.appendChild(el);
+    }
+    return el;
+  };
+
+  const showDebug = (text: string, visible = true) => {
+    try {
+      const el = ensureDebugEl();
+      el.textContent = text;
+      el.style.display = visible ? 'block' : 'none';
+    } catch {
+      // ignore if DOM is not accessible
+    }
+  };
+
+  const clearDebug = () => {
+    try {
+      const el = document.getElementById('fetchDebug') as HTMLElement | null;
+      if (el) el.style.display = 'none';
+    } catch {}
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    clearDebug();
 
     try {
       const result = await onLogin(username.trim(), password);
       if (!result.ok) {
         setError(result.message || 'Invalid credentials');
+        // show helpful debug text for the user/dev
+        showDebug(`Login failed: ${result.message || 'Invalid credentials'}`, true);
         setIsLoading(false);
         return;
       }
-      // success — App will update isLoggedIn
+      // success — the parent App will update isLoggedIn
     } catch (err: any) {
-      // show friendly UI error
+      const friendly = (err && err.message) ? String(err.message) : 'Unable to connect';
       setError('Unable to connect. Try again.');
       console.error('Login error', err);
 
@@ -61,7 +81,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         const msg =
           (err && err.message) ||
           (typeof err === 'string' ? err : JSON.stringify(err, Object.getOwnPropertyNames(err)));
-        showDebug(`Login fetch error: ${msg}`);
+        showDebug(`Login fetch error: ${msg}`, true);
+
         // optional beacon to server-side logging endpoint (if you add one)
         if (navigator.sendBeacon) {
           try {
@@ -133,7 +154,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <p className="text-gray-600">Inventory Management System</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" aria-live="polite">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                 <input
@@ -143,6 +164,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm transition-all duration-200 placeholder-gray-500"
                   placeholder="Enter your username"
                   required
+                  aria-label="username"
                 />
               </div>
 
@@ -155,15 +177,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm transition-all duration-200 placeholder-gray-500"
                   placeholder="Enter your password"
                   required
+                  aria-label="password"
                 />
               </div>
 
-              {error && <div className="text-sm text-red-600">{error}</div>}
+              {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
 
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-busy={isLoading}
+                aria-disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
