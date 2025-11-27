@@ -21,11 +21,8 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
   isOpen,
   onClose
 }) => {
-  // Format numbers and currency for India (₹, lakh/crore grouping)
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-IN').format(num);
-  };
 
+  // Format INR (₹)
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -33,6 +30,10 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-IN').format(num);
   };
 
   const categoryList = Object.entries(categories).sort((a, b) => a[0].localeCompare(b[0]));
@@ -46,7 +47,8 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
   const sidebarContent = (
     <div className="h-full flex flex-col bg-white border-r border-gray-200">
-      {/* Mobile Header */}
+
+      {/* MOBILE HEADER */}
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
         <button
@@ -58,12 +60,16 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Categories */}
+
+        {/* CATEGORIES */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
             Categories
           </h3>
+
           <nav className="space-y-1">
+
+            {/* ALL CATEGORIES */}
             <button
               onClick={() => {
                 onCategoryChange('all');
@@ -80,7 +86,8 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 {categoryList.reduce((sum, [, totals]) => sum + (totals.count || 0), 0)}
               </span>
             </button>
-            
+
+            {/* INDIVIDUAL CATEGORIES */}
             {categoryList.map(([category, totals]) => (
               <button
                 key={category}
@@ -94,16 +101,23 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
+                {/* NAME + COUNT */}
                 <div className="flex items-center justify-between w-full">
                   <span>{category}</span>
                   <span className="text-xs text-gray-500">{totals.count ?? 0}</span>
                 </div>
+
+                {/* UNITS + COST */}
                 <div className="flex items-center justify-between w-full mt-1">
                   <span className="text-xs text-gray-500">
                     {formatNumber(totals.units ?? 0)} units
                   </span>
+
+                  {/* FIXED: correct cost field (totalCost) */}
                   <span className="text-xs font-medium text-gray-600">
-                    {typeof (totals as any).cost === 'number' ? formatCurrency((totals as any).cost) : ''}
+                    {typeof totals.totalCost === 'number'
+                      ? formatCurrency(totals.totalCost)
+                      : ''}
                   </span>
                 </div>
               </button>
@@ -111,11 +125,12 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
           </nav>
         </div>
 
-        {/* Status Filter */}
+        {/* STATUS FILTER */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
             Status
           </h3>
+
           <nav className="space-y-1">
             {statusOptions.map(({ key, label, icon: Icon, color }) => (
               <button
@@ -135,24 +150,26 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
               </button>
             ))}
           </nav>
+
         </div>
+
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50" onClick={onClose} />
       )}
 
-      {/* Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out
         lg:translate-x-0 lg:static lg:inset-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      `}
+      >
         {sidebarContent}
       </div>
     </>
