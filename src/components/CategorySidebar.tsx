@@ -21,19 +21,16 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
   isOpen,
   onClose
 }) => {
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-IN').format(num);
+  };
 
-  // Format INR (₹)
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: 2
     }).format(amount);
-  };
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-IN').format(num);
   };
 
   const categoryList = Object.entries(categories).sort((a, b) => a[0].localeCompare(b[0]));
@@ -45,118 +42,6 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
     { key: 'maintenance', label: 'Maintenance', icon: Wrench, color: 'text-red-500' }
   ];
 
-  const sidebarContent = (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
-
-      {/* MOBILE HEADER */}
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
-
-        {/* CATEGORIES */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
-            Categories
-          </h3>
-
-          <nav className="space-y-1">
-
-            {/* ALL CATEGORIES */}
-            <button
-              onClick={() => {
-                onCategoryChange('all');
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
-                selectedCategory === 'all'
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span>All Categories</span>
-              <span className="text-xs text-gray-500">
-                {categoryList.reduce((sum, [, totals]) => sum + (totals.count || 0), 0)}
-              </span>
-            </button>
-
-            {/* INDIVIDUAL CATEGORIES */}
-            {categoryList.map(([category, totals]) => (
-              <button
-                key={category}
-                onClick={() => {
-                  onCategoryChange(category);
-                  onClose();
-                }}
-                className={`w-full flex flex-col px-3 py-2 text-sm rounded-md transition-colors ${
-                  selectedCategory === category
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {/* NAME + COUNT */}
-                <div className="flex items-center justify-between w-full">
-                  <span>{category}</span>
-                  <span className="text-xs text-gray-500">{totals.count ?? 0}</span>
-                </div>
-
-                {/* UNITS + COST */}
-                <div className="flex items-center justify-between w-full mt-1">
-                  <span className="text-xs text-gray-500">
-                    {formatNumber(totals.units ?? 0)} units
-                  </span>
-
-                  {/* FIXED: correct cost field (totalCost) */}
-                  <span className="text-xs font-medium text-gray-600">
-                    {typeof totals.totalCost === 'number'
-                      ? formatCurrency(totals.totalCost)
-                      : ''}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* STATUS FILTER */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
-            Status
-          </h3>
-
-          <nav className="space-y-1">
-            {statusOptions.map(({ key, label, icon: Icon, color }) => (
-              <button
-                key={key}
-                onClick={() => {
-                  onStatusChange(key);
-                  onClose();
-                }}
-                className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
-                  selectedStatus === key
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className={`h-4 w-4 mr-2 ${color}`} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
-
-        </div>
-
-      </div>
-    </div>
-  );
-
   return (
     <>
       {isOpen && (
@@ -165,12 +50,91 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}
+          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200
+          transform transition-transform duration-300 ease-in-out
+          lg:translate-x-0 lg:static
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
       >
-        {sidebarContent}
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold">Filters</h2>
+          <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto h-full">
+          {/* Categories */}
+          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+            Categories
+          </h3>
+
+          <button
+            onClick={() => {
+              onCategoryChange('all');
+              onClose();
+            }}
+            className={`w-full flex justify-between px-3 py-2 rounded-md text-sm ${
+              selectedCategory === 'all'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'hover:bg-gray-50'
+            }`}
+          >
+            <span>All Categories</span>
+            <span className="text-xs text-gray-500">
+              {categoryList.reduce((sum, [, t]) => sum + (t.count || 0), 0)}
+            </span>
+          </button>
+
+          {categoryList.map(([cat, totals]) => (
+            <button
+              key={cat}
+              onClick={() => {
+                onCategoryChange(cat);
+                onClose();
+              }}
+              className={`w-full block px-3 py-2 text-sm rounded-md mt-1 ${
+                selectedCategory === cat
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex justify-between">
+                <span>{cat}</span>
+                <span className="text-xs text-gray-500">{totals.count || 0}</span>
+              </div>
+
+              <div className="flex justify-between mt-1 text-xs text-gray-500">
+                <span>{formatNumber(totals.units || 0)} units</span>
+                <span>{formatCurrency((totals as any).cost || 0)}</span>
+              </div>
+            </button>
+          ))}
+
+          {/* Status */}
+          <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mt-6 mb-3">
+            Status
+          </h3>
+
+          {statusOptions.map(({ key, label, icon: Icon, color }) => (
+            <button
+              key={key}
+              onClick={() => {
+                onStatusChange(key);
+                onClose();
+              }}
+              className={`w-full flex items-center px-3 py-2 text-sm rounded-md ${
+                selectedStatus === key
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              <Icon className={`h-4 w-4 mr-2 ${color}`} />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );

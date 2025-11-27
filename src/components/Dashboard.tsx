@@ -1,169 +1,126 @@
-import React from 'react';
-import { Package, CheckCircle, Wrench, AlertTriangle, TrendingUp } from 'lucide-react';
-import { EquipmentStats } from '../types/Equipment';
+import React from "react";
+import {
+  Package,
+  CheckCircle,
+  Wrench,
+  AlertTriangle,
+  TrendingUp,
+} from "lucide-react";
+import { EquipmentStats } from "../types/Equipment";
 
-interface DashboardProps {
-  stats: EquipmentStats;
-}
-
-// Format Indian Currency (₹)
-const formatCurrencyINR = (value: number | string | undefined | null) => {
-  let num = 0;
-
-  if (value == null) num = 0;
-  else if (typeof value === "number") num = value;
-  else {
-    const cleaned = String(value).replace(/[^\d.-]/g, "");
-    num = Number(cleaned || 0);
-  }
+// Format currency in INR
+const formatCurrencyINR = (value: any) => {
+  let num = Number(String(value).replace(/[^\d.-]/g, "")) || 0;
 
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
   }).format(num);
 };
 
-// Format integers (Indian commas)
+// Format normal numbers
 const formatNumber = (n: number | undefined | null) =>
   new Intl.NumberFormat("en-IN").format(n || 0);
 
-const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="bg-white/40 backdrop-blur-sm rounded-2xl shadow-md border border-white/30 p-6 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+// Card UI
+const Card: React.FC<{ children: any }> = ({ children }) => (
+  <div className="bg-white/40 backdrop-blur-sm rounded-2xl shadow-md border p-6 hover:-translate-y-1 transition">
     {children}
   </div>
 );
 
-const IconCircle: React.FC<{ children: React.ReactNode; from?: string; to?: string }> = ({
-  children,
-  from = "from-blue-500",
-  to = "to-blue-600"
-}) => (
-  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${from} ${to} flex items-center justify-center shadow-md`}>
-    <div className="text-white">{children}</div>
+// Circle icon background
+const IconCircle: React.FC<{ children: any }> = ({ children }) => (
+  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow">
+    {children}
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
+const Dashboard: React.FC<{ stats: EquipmentStats }> = ({ stats }) => {
   return (
     <div className="space-y-6">
-      
-      {/* OVERVIEW CARDS */}
+      {/* TOP CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
+        {/* Equipment Types */}
         <Card>
           <div className="flex items-center">
-            <IconCircle><Package className="h-6 w-6" /></IconCircle>
-            <div className="ml-5">
-              <dt className="text-sm font-medium text-gray-700">Equipment Types</dt>
-              <dd className="text-2xl font-semibold">{formatNumber(stats.totalEquipmentTypes)}</dd>
+            <IconCircle>
+              <Package className="h-6 w-6" />
+            </IconCircle>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Equipment Types</p>
+              <p className="text-2xl font-semibold">
+                {formatNumber(stats.totalEquipmentTypes)}
+              </p>
             </div>
           </div>
         </Card>
 
+        {/* Total Units */}
         <Card>
           <div className="flex items-center">
-            <IconCircle from="from-green-400" to="to-green-600">
+            <IconCircle>
               <TrendingUp className="h-6 w-6" />
             </IconCircle>
-            <div className="ml-5">
-              <dt className="text-sm font-medium text-gray-700">Total Units</dt>
-              <dd className="text-2xl font-semibold">{formatNumber(stats.totalUnits)}</dd>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Units</p>
+              <p className="text-2xl font-semibold">
+                {formatNumber(stats.totalUnits)}
+              </p>
             </div>
           </div>
         </Card>
 
+        {/* Total Value */}
         <Card>
           <div className="flex items-center">
-            <IconCircle from="from-yellow-400" to="to-yellow-600">
-              <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M12 1v2" strokeWidth="1.5" />
-                <path d="M12 21v2" strokeWidth="1.5" />
-              </svg>
+            <IconCircle>
+              <AlertTriangle className="h-6 w-6" />
             </IconCircle>
-            <div className="ml-5">
-              <dt className="text-sm font-medium text-gray-700">Total Value</dt>
-              <dd className="text-2xl font-semibold">{formatCurrencyINR(stats.totalCost)}</dd>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Value</p>
+              <p className="text-2xl font-semibold">
+                {formatCurrencyINR(stats.totalCost || 0)}
+              </p>
             </div>
           </div>
         </Card>
 
+        {/* Available */}
         <Card>
           <div className="flex items-center">
-            <IconCircle from="from-green-400" to="to-green-600">
+            <IconCircle>
               <CheckCircle className="h-6 w-6" />
             </IconCircle>
-            <div className="ml-5">
-              <dt className="text-sm font-medium text-gray-700">Available</dt>
-              <dd className="text-2xl font-semibold">{formatNumber(stats.statusTotals.available)}</dd>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Available</p>
+              <p className="text-2xl font-semibold">
+                {formatNumber(stats.statusTotals.available)}
+              </p>
             </div>
           </div>
         </Card>
-
       </div>
 
-      {/* STATUS + CATEGORY OVERVIEW */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* CATEGORY OVERVIEW */}
+      <div className="bg-white/30 backdrop-blur-xl rounded-2xl p-6 border">
+        <p className="text-lg font-medium mb-4">Category Overview</p>
 
-        {/* STATUS OVERVIEW */}
-        <div className="bg-white/30 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Equipment Status</h3>
-
-          <div className="space-y-4">
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                <span>Available</span>
-              </div>
-              <span className="font-semibold">{formatNumber(stats.statusTotals.available)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <AlertTriangle className="h-5 w-5 text-orange-500 mr-2" />
-                <span>In Use</span>
-              </div>
-              <span className="font-semibold">{formatNumber(stats.statusTotals.in_use)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Wrench className="h-5 w-5 text-red-500 mr-2" />
-                <span>Maintenance</span>
-              </div>
-              <span className="font-semibold">{formatNumber(stats.statusTotals.maintenance)}</span>
-            </div>
-
+        {Object.entries(stats.categoryTotals).map(([category, totals]) => (
+          <div
+            key={category}
+            className="flex justify-between border-b last:border-b-0 py-2 text-sm"
+          >
+            <span>
+              {category} ({totals.count} types, {totals.units} units)
+            </span>
+            <span className="font-semibold">
+              {formatCurrencyINR(totals.cost)}
+            </span>
           </div>
-        </div>
-
-        {/* CATEGORY OVERVIEW */}
-        <div className="bg-white/30 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Category Overview</h3>
-
-          <div className="space-y-3">
-            {Object.entries(stats.categoryTotals)
-              .sort((a, b) => (b[1].totalCost || 0) - (a[1].totalCost || 0))
-              .slice(0, 5)
-              .map(([category, totals]) => (
-                <div key={category} className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium">{category}</span>
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({totals.count} types, {formatNumber(totals.units)} units)
-                    </span>
-                  </div>
-                  <span className="font-semibold">{formatCurrencyINR(totals.totalCost)}</span>
-                </div>
-              ))}
-          </div>
-
-        </div>
-
+        ))}
       </div>
-
     </div>
   );
 };
