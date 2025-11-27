@@ -16,17 +16,19 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
   onDelete,
   loading
 }) => {
-  // ✅ Format as INR
+
+  // ✅ Format number like: 2,88,30,271
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-IN').format(num);
+  };
+
+  // ✅ Format INR currency like: ₹10,000.00
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2
     }).format(amount);
-  };
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-IN').format(num);
   };
 
   const getStatusBadge = (statusCounts: Equipment['statusCounts']) => {
@@ -50,12 +52,29 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
     icon: React.ComponentType<any>;
     colorClass: string;
   }> = ({ item, status, icon: Icon, colorClass }) => {
+    
     const count = item.statusCounts[status];
 
     return (
       <div className="flex items-center space-x-2">
-        <div className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium border ${colorClass === 'green' ? 'border-green-100 bg-green-50' : colorClass === 'orange' ? 'border-orange-100 bg-orange-50' : 'border-red-100 bg-red-50'}`}>
-          <Icon className={`h-4 w-4 mr-2 ${colorClass === 'green' ? 'text-green-600' : colorClass === 'orange' ? 'text-orange-600' : 'text-red-600'}`} />
+        <div
+          className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium border ${
+            colorClass === 'green'
+              ? 'border-green-100 bg-green-50'
+              : colorClass === 'orange'
+              ? 'border-orange-100 bg-orange-50'
+              : 'border-red-100 bg-red-50'
+          }`}
+        >
+          <Icon
+            className={`h-4 w-4 mr-2 ${
+              colorClass === 'green'
+                ? 'text-green-600'
+                : colorClass === 'orange'
+                ? 'text-orange-600'
+                : 'text-red-600'
+            }`}
+          />
           <span className="text-sm font-medium text-gray-800">{count}</span>
         </div>
       </div>
@@ -106,9 +125,12 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
               </th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-gray-200">
             {equipment.map((item) => (
               <tr key={item._id} className="hover:bg-gray-50">
+                
+                {/* Name + Notes */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-medium text-gray-900">{item.name}</div>
@@ -119,11 +141,15 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
                     )}
                   </div>
                 </td>
+
+                {/* Category */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     {item.category}
                   </span>
                 </td>
+
+                {/* Quantity + Cost */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
                     <div>{formatNumber(item.quantity)} units</div>
@@ -131,33 +157,23 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
                     <div className="font-semibold text-green-600">{formatCurrency(item.totalCost)} total</div>
                   </div>
                 </td>
+
+                {/* Status */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       {getStatusBadge(item.statusCounts)}
                     </div>
+
                     <div className="space-y-2 mt-2">
-                      <StatusDisplay
-                        item={item}
-                        status="available"
-                        icon={CheckCircle}
-                        colorClass="green"
-                      />
-                      <StatusDisplay
-                        item={item}
-                        status="in_use"
-                        icon={AlertTriangle}
-                        colorClass="orange"
-                      />
-                      <StatusDisplay
-                        item={item}
-                        status="maintenance"
-                        icon={Wrench}
-                        colorClass="red"
-                      />
+                      <StatusDisplay item={item} status="available" icon={CheckCircle} colorClass="green" />
+                      <StatusDisplay item={item} status="in_use" icon={AlertTriangle} colorClass="orange" />
+                      <StatusDisplay item={item} status="maintenance" icon={Wrench} colorClass="red" />
                     </div>
                   </div>
                 </td>
+
+                {/* Actions */}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex space-x-2">
                     <button
@@ -167,6 +183,7 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
+
                     <button
                       onClick={() => onDelete(item._id)}
                       className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
@@ -176,9 +193,11 @@ const EquipmentTable: React.FC<EquipmentTableProps> = ({
                     </button>
                   </div>
                 </td>
+
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
     </div>

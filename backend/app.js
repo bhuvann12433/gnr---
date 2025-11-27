@@ -12,35 +12,47 @@ dotenv.config();
 const app = express();
 
 // ==========================
-// ⭐ UPDATED CORS CONFIG
+// ⭐ FINAL, FULLY FIXED CORS CONFIG
 // ==========================
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-  : [
-      'https://gnr-warehouse-main.vercel.app', // Your Vercel frontend (IMPORTANT)
-      'http://localhost:5173',                // Local dev
-      'http://127.0.0.1:5173'
-    ];
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Allow Curl / Postman / Server-to-server
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+const allowedOrigins = [
+  'https://gnr-warehouse-main.vercel.app',  // your frontend domain
+  'https://*.vercel.app',                   // allow Vercel preview deployments
+  'http://localhost:5173',                  // local dev
+  'http://127.0.0.1:5173'
+];
 
-    return callback(
-      new Error(`CORS policy: This origin is not allowed -> ${origin}`)
-    );
-  },
-  credentials: true,
-  methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-};
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow server-to-server & Postman
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+      const isAllowed = allowedOrigins.some((allowed) => {
+        if (allowed.includes('*')) {
+          // wildcard support
+          const pattern = new RegExp('^' + allowed.replace('*', '.*') + '$');
+          return pattern.test(origin);
+        }
+        return allowed === origin;
+      });
+
+      if (isAllowed) return callback(null, true);
+
+      return callback(new Error(`CORS blocked: Origin ${origin} is not allowed`));
+    },
+
+    credentials: true,
+    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+  })
+);
+
+// allow OPTIONS for all routes
+app.options('*', cors());
 
 // ==========================
-//  Middlewares
+//  MIDDLEWARES
 // ==========================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -53,14 +65,14 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/stats', statsRoutes);
 
 // ==========================
-//  Root Route
+//  ROOT ROUTE
 // ==========================
 app.get('/', (req, res) => {
   res.send('🚀 Backend is running — GNR Surgicals API');
 });
 
 // ==========================
-//  Health Check Route
+//  HEALTH CHECK
 // ==========================
 app.get('/api/health', (req, res) => {
   res.json({
@@ -74,10 +86,12 @@ app.get('/api/health', (req, res) => {
 // ==========================
 app.use((err, req, res, next) => {
   if (err && err.message && err.message.includes('CORS')) {
-    return res.status(403).json({ error: 'CORS blocked', message: err.message });
+    return res.status(403).json({
+      error: 'CORS blocked',
+      message: err.message,
+    });
   }
   next(err);
 });
 
 export default app;
-cd
