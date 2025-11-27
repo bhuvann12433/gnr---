@@ -2,13 +2,15 @@ import React from "react";
 import {
   Package,
   CheckCircle,
-  Wrench,
   AlertTriangle,
-  TrendingUp,
+  TrendingUp
 } from "lucide-react";
+
 import { EquipmentStats } from "../types/Equipment";
 
-// Format currency in INR
+// -------------------------------
+// FORMAT INR ₹
+// -------------------------------
 const formatCurrencyINR = (value: any) => {
   let num = Number(String(value).replace(/[^\d.-]/g, "")) || 0;
 
@@ -19,29 +21,42 @@ const formatCurrencyINR = (value: any) => {
   }).format(num);
 };
 
-// Format normal numbers
+// -------------------------------
+// NORMAL NUMBER FORMAT (1,23,456)
+// -------------------------------
 const formatNumber = (n: number | undefined | null) =>
   new Intl.NumberFormat("en-IN").format(n || 0);
 
-// Card UI
+// -------------------------------
+// CARD COMPONENT
+// -------------------------------
 const Card: React.FC<{ children: any }> = ({ children }) => (
   <div className="bg-white/40 backdrop-blur-sm rounded-2xl shadow-md border p-6 hover:-translate-y-1 transition">
     {children}
   </div>
 );
 
-// Circle icon background
+// -------------------------------
+// CIRCLE ICON WRAPPER
+// -------------------------------
 const IconCircle: React.FC<{ children: any }> = ({ children }) => (
   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow">
     {children}
   </div>
 );
 
+// -------------------------------
+// MAIN DASHBOARD
+// -------------------------------
 const Dashboard: React.FC<{ stats: EquipmentStats }> = ({ stats }) => {
   return (
     <div className="space-y-6">
-      {/* TOP CARDS */}
+
+      {/* ----------------------------- */}
+      {/* TOP SUMMARY CARDS */}
+      {/* ----------------------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
         {/* Equipment Types */}
         <Card>
           <div className="flex items-center">
@@ -101,9 +116,12 @@ const Dashboard: React.FC<{ stats: EquipmentStats }> = ({ stats }) => {
             </div>
           </div>
         </Card>
+
       </div>
 
+      {/* ----------------------------- */}
       {/* CATEGORY OVERVIEW */}
+      {/* ----------------------------- */}
       <div className="bg-white/30 backdrop-blur-xl rounded-2xl p-6 border">
         <p className="text-lg font-medium mb-4">Category Overview</p>
 
@@ -115,12 +133,14 @@ const Dashboard: React.FC<{ stats: EquipmentStats }> = ({ stats }) => {
             <span>
               {category} ({totals.count} types, {totals.units} units)
             </span>
+
             <span className="font-semibold">
               {formatCurrencyINR(totals.cost)}
             </span>
           </div>
         ))}
       </div>
+
     </div>
   );
 };
